@@ -20,9 +20,16 @@ def ImportModel(path):
     bpy.ops.object.join()    
     bpy.context.selected_objects[0].name = "GT"
     #bpy.context.selected_objects[0].hide_render = not bpy.context.selected_objects[0].hide_render
-
+def GetModifierPointCount(obj):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    bm = bmesh.new()
+    bm.from_object( obj, depsgraph )
+    bm.verts.ensure_lookup_table()
+    temp = len(bm.verts)
+    bm.free()
+    #print(temp)
+    return temp
 def PointCloudGen(obj,AimPointCloudCount):
-    
     Bx = obj.dimensions.x
     By = obj.dimensions.y
     Bz = obj.dimensions.z
@@ -30,9 +37,34 @@ def PointCloudGen(obj,AimPointCloudCount):
     #print(By)
     #print(Bz)
     #print(Bx*By*Bz)
+    modifier = obj.modifiers.new(name="GeometryNodes", type='NODES')
     
-    #
+    node_group = bpy.data.node_groups.new(type="GeometryNodeTree", name="MyGeometryNodeGroup")
+    # Create a custom geometry input socket
+    input_socket = node_group.inputs.new('NodeSocketGeometry', "Geometry")
+    input_node = node_group.nodes.new('NodeGroupInput')    
+    input_node.location = Vector((-400, 0))
+    # Create a custom geometry output socket
+    output_socket = node_group.outputs.new('NodeSocketGeometry', "Geometry")
+    output_node = node_group.nodes.new('NodeGroupOutput')
+    output_node.location = Vector((400, 0))
+    # Create input and output nodes for the group
+    distribute_points_node = node_group.nodes.new(type='GeometryNodeDistributePointsOnFaces')
+    distribute_points_node.location = (-200, 0)
     
+    #distribute_points_node.density  = 200
+    point_to_vertices_node = node_group.nodes.new(type= 'GeometryNodePointsToVertices')
+    point_to_vertices_node.location = (200, 0)
+    # Link the input and output sockets
+    node_group.links.new(input_node.outputs[0], distribute_points_node.inputs[0])
+    node_group.links.new(distribute_points_node.outputs[0], point_to_vertices_node.inputs[0])
+    node_group.links.new(point_to_vertices_node.outputs[0], output_node.inputs[0])
+    modifier.node_group = node_group
+    # Update to apply changes
+    bpy.context.view_layer.update()
+    tempDensity = 10
+    #smallDensity = 0
+    #bigDensity = 10000
     distribute_points_node.inputs["Density"].default_value = tempDensity
     #return
     #Ratio
@@ -99,7 +131,7 @@ def main():
     ###
     MainPath = r'D:\PaperEvaluation\Other\\'
     LoadModelStart = 1
-    LoadModelEnd = 29
+    LoadModelEnd = 2
     model_names= ['GT']
     ###    
     ##import model
@@ -112,7 +144,7 @@ def main():
                 PointCloudGen(obj,400000)
                 #
                 ExportModel(obj,MainPath+"M"+'{:02d}'.format(NumberName)+"\\PolyFit\\")
-                bpy.ops.object.delete()
+                #bpy.ops.object.delete()
                 break
     
 if __name__ == '__main__':
