@@ -20,6 +20,8 @@ def ImportModel(path):
     bpy.ops.object.join()    
     bpy.context.selected_objects[0].name = "GT"
     #bpy.context.selected_objects[0].hide_render = not bpy.context.selected_objects[0].hide_render
+
+
 def GetModifierPointCount(obj):
     depsgraph = bpy.context.evaluated_depsgraph_get()
     bm = bmesh.new()
